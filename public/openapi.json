@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://gds-preview.vercel.app",
+      "url": "https://gds-preview-app-muxj.vercel.app",
       "description": "Production"
     }
   ],
