@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
-const VERCEL_TOKEN = process.env.VERCEL_TOKEN!;
-const VERCEL_TEAM_ID = process.env.VERCEL_TEAM_ID; // optional
-const API_SECRET = process.env.API_SECRET!; // shared secret for Custom GPT auth
+// Read env at request time, not module load time
+function getEnv() {
+  return {
+    VERCEL_TOKEN: process.env.VERCEL_TOKEN ?? "",
+    VERCEL_TEAM_ID: process.env.VERCEL_TEAM_ID,
+    API_SECRET: process.env.API_SECRET ?? "",
+  };
+}
 
 // Allowed npm dependencies in user projects
 const ALLOWED_DEPS: Record<string, string> = {
@@ -149,10 +154,15 @@ export default defineConfig({
 }
 
 export async function POST(request: NextRequest) {
+  const env = getEnv();
+
   // Auth check
   const authHeader = request.headers.get("authorization");
-  if (!authHeader || authHeader !== `Bearer ${API_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!env.API_SECRET || !authHeader || authHeader !== `Bearer ${env.API_SECRET}`) {
+    return NextResponse.json(
+      { error: "Unauthorized", debug: { hasSecret: !!env.API_SECRET, hasAuth: !!authHeader } },
+      { status: 401 }
+    );
   }
 
   let body: {
@@ -212,15 +222,15 @@ export async function POST(request: NextRequest) {
   const deploymentName = `gds-preview-${previewId}`;
 
   // Create Vercel deployment
-  const vercelUrl = VERCEL_TEAM_ID
-    ? `https://api.vercel.com/v13/deployments?teamId=${VERCEL_TEAM_ID}`
+  const vercelUrl = env.VERCEL_TEAM_ID
+    ? `https://api.vercel.com/v13/deployments?teamId=${env.VERCEL_TEAM_ID}`
     : "https://api.vercel.com/v13/deployments";
 
   try {
     const vercelRes = await fetch(vercelUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${VERCEL_TOKEN}`,
+        Authorization: `Bearer ${env.VERCEL_TOKEN}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
