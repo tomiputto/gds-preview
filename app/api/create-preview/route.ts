@@ -159,8 +159,20 @@ export async function POST(request: NextRequest) {
   // Auth check
   const authHeader = request.headers.get("authorization");
   if (!env.API_SECRET || !authHeader || authHeader !== `Bearer ${env.API_SECRET}`) {
+    const expected = `Bearer ${env.API_SECRET}`;
     return NextResponse.json(
-      { error: "Unauthorized", debug: { hasSecret: !!env.API_SECRET, hasAuth: !!authHeader } },
+      {
+        error: "Unauthorized",
+        debug: {
+          hasSecret: !!env.API_SECRET,
+          hasAuth: !!authHeader,
+          secretLength: env.API_SECRET.length,
+          authLength: authHeader?.length ?? 0,
+          expectedLength: expected.length,
+          authPrefix: authHeader?.slice(0, 10),
+          match: authHeader === expected,
+        },
+      },
       { status: 401 }
     );
   }
