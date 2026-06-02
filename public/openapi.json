@@ -1,0 +1,90 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "GDS Preview API",
+    "description": "Creates live preview deployments of React apps built with the GDS (Gofore Design System). Send React component code and receive a unique preview URL.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://gds-preview.vercel.app",
+      "description": "Production"
+    }
+  ],
+  "paths": {
+    "/api/create-preview": {
+      "post": {
+        "operationId": "createPreview",
+        "summary": "Create a GDS preview deployment",
+        "description": "Receives React/TSX code for App.tsx (and optional extra component files), wraps it in a Vite + GDS template, and deploys it to Vercel. Returns a unique preview URL.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["appCode"],
+                "properties": {
+                  "appCode": {
+                    "type": "string",
+                    "description": "The full contents of src/App.tsx. Must export a default React component. Use GDS imports: GDSProvider is already wrapped in main.tsx, so App.tsx should import UI components from @chakra-ui/react and @gdesignsystem/react."
+                  },
+                  "extraFiles": {
+                    "type": "object",
+                    "description": "Optional additional source files. Keys must start with 'src/' (e.g. 'src/components/Header.tsx'). Values are the full file contents as strings.",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Optional page title for the HTML document. Defaults to 'GDS Preview'."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deployment created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "previewUrl": {
+                      "type": "string",
+                      "description": "The unique URL where the preview is deployed (e.g. https://gds-preview-a1b2c3d4.vercel.app)"
+                    },
+                    "deploymentId": {
+                      "type": "string",
+                      "description": "Vercel deployment ID"
+                    },
+                    "previewId": {
+                      "type": "string",
+                      "description": "Short unique ID for this preview"
+                    },
+                    "status": {
+                      "type": "string",
+                      "description": "Deployment status (initially 'building')"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (missing appCode, blocked code patterns)"
+          },
+          "401": {
+            "description": "Unauthorized (missing or invalid API secret)"
+          },
+          "502": {
+            "description": "Vercel deployment failed"
+          }
+        }
+      }
+    }
+  }
+}
