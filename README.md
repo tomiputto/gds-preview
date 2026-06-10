@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# gds-preview
 
-## Getting Started
+API backend for **ChatGPT Custom GPT** live React previews. Deployed at [gds-preview-app-muxj.vercel.app](https://gds-preview-app-muxj.vercel.app).
 
-First, run the development server:
+Supports multiple design systems on the **same** Action URL — each Custom GPT passes a `designSystem` id so stacks do not overwrite or break each other.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+| `designSystem` | npm scope | Custom GPT instructions |
+|----------------|-----------|-------------------------|
+| `gds` | `@gdesignsystem/*` (Gofore GDS) | [`CUSTOM_GPT_INSTRUCTIONS.md`](./CUSTOM_GPT_INSTRUCTIONS.md) |
+| `gds-vero` | `@gds-vero/*` (vero.fi) | [`CUSTOM_GPT_INSTRUCTIONS_GDS_VERO.md`](./CUSTOM_GPT_INSTRUCTIONS_GDS_VERO.md) |
+
+## API
+
+`POST /api/create-preview` with Bearer `API_SECRET`:
+
+```json
+{
+  "designSystem": "gds-vero",
+  "appCode": "export default function App() { ... }",
+  "extraFiles": { "src/components/Card.tsx": "..." },
+  "title": "My preview"
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Response includes a unique public `previewUrl`. OpenAPI schema: [`public/openapi.json`](./public/openapi.json).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.example` → `.env.local`:
 
-## Learn More
+- `VERCEL_TOKEN` — Vercel API token
+- `API_SECRET` — shared secret for Custom GPT Action auth
+- `VERCEL_TEAM_ID` — optional
 
-To learn more about Next.js, take a look at the following resources:
+## Custom GPT setup
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Deploy this app to Vercel.
+2. In ChatGPT → Custom GPT → **Actions**, import schema from `https://gds-preview-app-muxj.vercel.app/openapi.json` (or paste `public/openapi.json`).
+3. Set Authentication → API Key → Bearer → your `API_SECRET`.
+4. Paste instructions from the correct `CUSTOM_GPT_INSTRUCTIONS*.md` file.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+After updating `openapi.json`, re-import the Action schema in **both** Custom GPTs.
 
-## Deploy on Vercel
+## Local dev
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm install
+npm run dev
+```

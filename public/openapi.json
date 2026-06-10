@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "GDS Preview API",
-    "description": "Creates live preview deployments of React apps built with the GDS (Gofore Design System). Send React component code and receive a unique preview URL.",
-    "version": "1.0.0"
+    "description": "Creates live preview deployments of React apps built with GDS design systems (Gofore GDS or GDS-VERO). Send React component code, a designSystem id, and receive a unique public preview URL.",
+    "version": "1.1.0"
   },
   "servers": [
     {
@@ -16,18 +16,23 @@
       "post": {
         "operationId": "createPreview",
         "summary": "Create a GDS preview deployment",
-        "description": "Receives React/TSX code for App.tsx (and optional extra component files), wraps it in a Vite + GDS template, and deploys it to Vercel. Returns a unique preview URL.",
+        "description": "Receives React/TSX code for App.tsx (and optional extra component files), wraps it in a Vite + GDS template for the selected design system, and deploys it to Vercel. Returns a unique preview URL. Each deployment is isolated — previews do not overwrite each other.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["appCode"],
+                "required": ["appCode", "designSystem"],
                 "properties": {
+                  "designSystem": {
+                    "type": "string",
+                    "enum": ["gds", "gds-vero"],
+                    "description": "Which design system stack to use. Use \"gds\" for Gofore GDS (@gdesignsystem/*). Use \"gds-vero\" for Verohallinto / vero.fi GDS-VERO (@gds-vero/*). Required so multiple Custom GPTs can share this API safely."
+                  },
                   "appCode": {
                     "type": "string",
-                    "description": "The full contents of src/App.tsx. Must export a default React component. Use GDS imports: GDSProvider is already wrapped in main.tsx, so App.tsx should import UI components from @chakra-ui/react and @gdesignsystem/react."
+                    "description": "The full contents of src/App.tsx. Must export a default React component. GDSProvider is already wrapped in main.tsx — do not add it in App.tsx."
                   },
                   "extraFiles": {
                     "type": "object",
@@ -55,7 +60,7 @@
                   "properties": {
                     "previewUrl": {
                       "type": "string",
-                      "description": "The unique URL where the preview is deployed (e.g. https://gds-preview-a1b2c3d4.vercel.app)"
+                      "description": "The unique public URL where the preview is deployed"
                     },
                     "deploymentId": {
                       "type": "string",
@@ -64,6 +69,10 @@
                     "previewId": {
                       "type": "string",
                       "description": "Short unique ID for this preview"
+                    },
+                    "designSystem": {
+                      "type": "string",
+                      "description": "The design system used for this deployment"
                     },
                     "status": {
                       "type": "string",
@@ -75,7 +84,7 @@
             }
           },
           "400": {
-            "description": "Invalid request (missing appCode, blocked code patterns)"
+            "description": "Invalid request (missing appCode, wrong designSystem, cross-stack imports, blocked code patterns)"
           },
           "401": {
             "description": "Unauthorized (missing or invalid API secret)"

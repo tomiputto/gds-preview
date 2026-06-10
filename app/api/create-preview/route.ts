@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import {
+  DEFAULT_DESIGN_SYSTEM,
+  DESIGN_SYSTEMS,
+  type DesignSystemId,
+  resolveDesignSystem,
+} from "./design-systems";
 
 // Read env at request time, not module load time
 function getEnv() {
@@ -9,18 +15,6 @@ function getEnv() {
     API_SECRET: process.env.API_SECRET ?? "",
   };
 }
-
-// Allowed npm dependencies in user projects
-const ALLOWED_DEPS: Record<string, string> = {
-  react: "^18.3.1",
-  "react-dom": "^18.3.1",
-  "@gdesignsystem/react": "^0.1.8",
-  "@gdesignsystem/theme": "^0.1.8",
-  "@gdesignsystem/icons": "^0.1.1",
-  "@gdesignsystem/tokens": "^0.1.3",
-  "@chakra-ui/react": "^3.0.0",
-  "@emotion/react": "^11.0.0",
-};
 
 const ALLOWED_DEV_DEPS: Record<string, string> = {
   vite: "^6.0.0",
@@ -51,11 +45,42 @@ function validateCode(code: string): string | null {
   return null;
 }
 
+function validateDesignSystemImports(
+  designSystem: DesignSystemId,
+  chunks: Array<{ label: string; code: string }>
+): string | null {
+  const config = DESIGN_SYSTEMS[designSystem];
+  for (const { label, code } of chunks) {
+    if (config.forbiddenImportPattern.test(code)) {
+      return `${label} imports the wrong design system for designSystem="${designSystem}". Use only ${config.providerPackage} and related packages for this stack.`;
+    }
+  }
+  return null;
+}
+
+function buildMainTsx(providerPackage: string) {
+  return `import React from "react";
+import ReactDOM from "react-dom/client";
+import { GDSProvider } from "${providerPackage}";
+import App from "./App";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <GDSProvider>
+      <App />
+    </GDSProvider>
+  </React.StrictMode>
+);`;
+}
+
 function buildTemplateFiles(
+  designSystem: DesignSystemId,
   appCode: string,
   extraFiles?: Record<string, string>,
   title?: string
 ) {
+  const config = DESIGN_SYSTEMS[designSystem];
+
   const packageJson = JSON.stringify(
     {
       name: "gds-preview-app",
@@ -67,7 +92,7 @@ function buildTemplateFiles(
         build: "vite build",
         preview: "vite preview",
       },
-      dependencies: ALLOWED_DEPS,
+      dependencies: config.dependencies,
       devDependencies: ALLOWED_DEV_DEPS,
     },
     null,
@@ -86,19 +111,6 @@ function buildTemplateFiles(
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>`;
-
-  const mainTsx = `import React from "react";
-import ReactDOM from "react-dom/client";
-import { GDSProvider } from "@gdesignsystem/react";
-import App from "./App";
-
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <GDSProvider>
-      <App />
-    </GDSProvider>
-  </React.StrictMode>
-);`;
 
   const viteConfig = `import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
@@ -132,20 +144,16 @@ export default defineConfig({
   const files: Array<{ file: string; data: string }> = [
     { file: "package.json", data: packageJson },
     { file: "index.html", data: indexHtml },
-    { file: "src/main.tsx", data: mainTsx },
+    { file: "src/main.tsx", data: buildMainTsx(config.providerPackage) },
     { file: "src/App.tsx", data: appCode },
     { file: "vite.config.ts", data: viteConfig },
     { file: "tsconfig.json", data: tsconfig },
   ];
 
-  // Add any extra component files
   if (extraFiles) {
     for (const [filePath, content] of Object.entries(extraFiles)) {
-      // Only allow files under src/
       if (!filePath.startsWith("src/")) continue;
-      // Block api routes, serverless functions
-      if (filePath.includes("api/") || filePath.includes("serverless/"))
-        continue;
+      if (filePath.includes("api/") || filePath.includes("serverless/")) continue;
       files.push({ file: filePath, data: content });
     }
   }
@@ -156,7 +164,6 @@ export default defineConfig({
 export async function POST(request: NextRequest) {
   const env = getEnv();
 
-  // Auth check
   const authHeader = request.headers.get("authorization");
   if (!env.API_SECRET || !authHeader || authHeader !== `Bearer ${env.API_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -166,6 +173,7 @@ export async function POST(request: NextRequest) {
     appCode: string;
     extraFiles?: Record<string, string>;
     title?: string;
+    designSystem?: string;
   };
 
   try {
@@ -174,7 +182,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { appCode, extraFiles, title } = body;
+  const { appCode, extraFiles, title, designSystem: designSystemRaw } = body;
+  const designSystem = resolveDesignSystem(designSystemRaw);
+
+  if (!designSystem) {
+    return NextResponse.json(
+      {
+        error: 'Invalid designSystem. Use "gds" (Gofore GDS) or "gds-vero" (Verohallinto / vero.fi).',
+      },
+      { status: 400 }
+    );
+  }
 
   if (!appCode || typeof appCode !== "string") {
     return NextResponse.json(
@@ -183,16 +201,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Validate main app code
   const appCodeError = validateCode(appCode);
   if (appCodeError) {
-    return NextResponse.json(
-      { error: `Blocked: ${appCodeError}` },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: `Blocked: ${appCodeError}` }, { status: 400 });
   }
 
-  // Validate extra files
   if (extraFiles) {
     for (const [filePath, content] of Object.entries(extraFiles)) {
       const extraError = validateCode(content);
@@ -205,10 +218,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Build template files
-  const files = buildTemplateFiles(appCode, extraFiles, title);
+  const importChunks = [
+    { label: "appCode", code: appCode },
+    ...Object.entries(extraFiles ?? {}).map(([filePath, code]) => ({
+      label: filePath,
+      code,
+    })),
+  ];
+  const importError = validateDesignSystemImports(designSystem, importChunks);
+  if (importError) {
+    return NextResponse.json({ error: importError }, { status: 400 });
+  }
 
-  // Convert file contents to base64 for Vercel API
+  const files = buildTemplateFiles(designSystem, appCode, extraFiles, title);
+
   const vercelFiles = files.map((f) => ({
     file: f.file,
     data: Buffer.from(f.data).toString("base64"),
@@ -216,9 +239,9 @@ export async function POST(request: NextRequest) {
   }));
 
   const previewId = crypto.randomUUID().slice(0, 8);
-  const deploymentName = `gds-preview-${previewId}`;
+  const deploymentPrefix = designSystem === DEFAULT_DESIGN_SYSTEM ? "gds-preview" : "gds-vero-preview";
+  const deploymentName = `${deploymentPrefix}-${previewId}`;
 
-  // Create Vercel deployment
   const vercelUrl = env.VERCEL_TEAM_ID
     ? `https://api.vercel.com/v13/deployments?teamId=${env.VERCEL_TEAM_ID}`
     : "https://api.vercel.com/v13/deployments";
@@ -258,13 +281,11 @@ export async function POST(request: NextRequest) {
       previewUrl: `https://${deployment.url}`,
       deploymentId: deployment.id,
       previewId,
+      designSystem,
       status: "building",
     });
   } catch (error) {
     console.error("Deployment request failed:", error);
-    return NextResponse.json(
-      { error: "Failed to create deployment" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create deployment" }, { status: 500 });
   }
 }
