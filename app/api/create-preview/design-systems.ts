@@ -36,7 +36,7 @@ export const DESIGN_SYSTEMS: Record<DesignSystemId, DesignSystemConfig> = {
     dependencies: {
       ...SHARED_DEPS,
       "@gds-vero/react": "^0.1.12",
-      "@gds-vero/theme": "^0.1.9",
+      "@gds-vero/theme": "^0.1.10",
       "@gds-vero/icons": "^0.1.1",
     },
     forbiddenImportPattern: /@gdesignsystem\//,
