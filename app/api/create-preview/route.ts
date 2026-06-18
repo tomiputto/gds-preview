@@ -292,7 +292,7 @@ export async function POST(request: NextRequest) {
     const projectDomain = `${deploymentName}.vercel.app`;
     const finalPreviewUrl = `https://${projectDomain}`;
     const baseUrl = getPublicBaseUrl(request);
-    const previewUrl = `${baseUrl}/wait?deploymentId=${encodeURIComponent(deployment.id)}&url=${encodeURIComponent(finalPreviewUrl)}`;
+    const previewUrl = `${baseUrl}/wait?deploymentId=${encodeURIComponent(deployment.id)}&url=${encodeURIComponent(finalPreviewUrl)}&project=${encodeURIComponent(deploymentName)}`;
 
     return NextResponse.json({
       previewUrl,

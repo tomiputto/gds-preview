@@ -7,7 +7,9 @@ export default function WaitClient() {
   const params = useSearchParams();
   const deploymentId = params.get("deploymentId");
   const targetUrl = params.get("url");
+  const project = params.get("project");
   const [message, setMessage] = useState("Building preview…");
+  const [showManualLink, setShowManualLink] = useState(false);
 
   useEffect(() => {
     if (!deploymentId || !targetUrl) {
@@ -18,16 +20,35 @@ export default function WaitClient() {
     const id = deploymentId;
     const url = targetUrl;
     let cancelled = false;
+    let failedPolls = 0;
 
     async function poll() {
       while (!cancelled) {
         try {
-          const statusUrl = `/api/preview-status?deploymentId=${encodeURIComponent(id)}&url=${encodeURIComponent(url)}`;
-          const res = await fetch(statusUrl);
+          const query = new URLSearchParams({
+            deploymentId: id,
+            url,
+          });
+          if (project) query.set("project", project);
+
+          const res = await fetch(`/api/preview-status?${query}`);
           const data = await res.json();
+
+          if (!res.ok) {
+            failedPolls += 1;
+            if (failedPolls >= 3) {
+              setMessage("Still checking build status…");
+              setShowManualLink(true);
+            }
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            continue;
+          }
+
+          failedPolls = 0;
 
           if (data.status === "error") {
             setMessage("Preview build failed.");
+            setShowManualLink(true);
             return;
           }
 
@@ -35,6 +56,7 @@ export default function WaitClient() {
             setMessage("Starting deployment…");
           } else if (data.status === "building") {
             setMessage("Building preview…");
+            setShowManualLink(true);
           }
 
           if (data.status === "ready") {
@@ -42,7 +64,10 @@ export default function WaitClient() {
             return;
           }
         } catch {
-          // Keep polling on transient errors.
+          failedPolls += 1;
+          if (failedPolls >= 3) {
+            setShowManualLink(true);
+          }
         }
 
         await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -53,7 +78,7 @@ export default function WaitClient() {
     return () => {
       cancelled = true;
     };
-  }, [deploymentId, targetUrl]);
+  }, [deploymentId, targetUrl, project]);
 
   return (
     <main
@@ -69,6 +94,13 @@ export default function WaitClient() {
       <p style={{ color: "#666", margin: 0 }}>
         The preview opens automatically when the build is ready.
       </p>
+      {showManualLink && targetUrl ? (
+        <p style={{ marginTop: "1.5rem" }}>
+          <a href={targetUrl} style={{ color: "#0066cc" }}>
+            Open preview directly
+          </a>
+        </p>
+      ) : null}
     </main>
   );
 }

@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  fetchDeployment,
   getVercelEnv,
+  isAliasAssigned,
+  isDeploymentFailed,
+  isDeploymentReady,
+  resolveDeployment,
 } from "@/lib/vercel-deployment";
 
 export async function GET(request: NextRequest) {
   const deploymentId = request.nextUrl.searchParams.get("deploymentId");
   const previewUrl = request.nextUrl.searchParams.get("url");
+  const project = request.nextUrl.searchParams.get("project");
 
   if (!deploymentId || !previewUrl) {
     return NextResponse.json({ error: "Missing deploymentId or url" }, { status: 400 });
@@ -18,18 +22,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const deployment = await fetchDeployment(deploymentId, VERCEL_TOKEN, VERCEL_TEAM_ID);
+    const deployment = await resolveDeployment(
+      { deploymentId, previewUrl, project },
+      VERCEL_TOKEN,
+      VERCEL_TEAM_ID
+    );
 
-    if (deployment.readyState === "ERROR" || deployment.readyState === "CANCELED") {
+    if (isDeploymentFailed(deployment)) {
       return NextResponse.json({ status: "error", previewUrl });
     }
 
-    if (deployment.readyState === "READY") {
+    if (isDeploymentReady(deployment)) {
       return NextResponse.json({ status: "ready", previewUrl });
     }
 
     return NextResponse.json({
-      status: deployment.aliasAssigned ? "building" : "waiting",
+      status: isAliasAssigned(deployment) ? "building" : "waiting",
       previewUrl,
     });
   } catch (error) {
