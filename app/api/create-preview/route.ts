@@ -277,8 +277,13 @@ export async function POST(request: NextRequest) {
 
     const deployment = await vercelRes.json();
 
+    // Use the project domain (e.g. gds-vero-preview-abc123.vercel.app), not
+    // deployment.url (unique deployment URL). On Hobby, Standard Protection
+    // blocks deployment URLs but leaves the project .vercel.app domain public.
+    const previewUrl = `https://${deploymentName}.vercel.app`;
+
     return NextResponse.json({
-      previewUrl: `https://${deployment.url}`,
+      previewUrl,
       deploymentId: deployment.id,
       previewId,
       designSystem,
