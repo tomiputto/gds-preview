@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   fetchDeployment,
   getVercelEnv,
-  isPreviewUrlReachable,
 } from "@/lib/vercel-deployment";
 
 export async function GET(request: NextRequest) {
@@ -29,10 +28,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ status: "ready", previewUrl });
     }
 
-    const reachable = await isPreviewUrlReachable(previewUrl);
     return NextResponse.json({
-      status: reachable ? "building" : "waiting",
-      reachable,
+      status: deployment.aliasAssigned ? "building" : "waiting",
       previewUrl,
     });
   } catch (error) {

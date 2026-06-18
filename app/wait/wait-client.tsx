@@ -31,7 +31,13 @@ export default function WaitClient() {
             return;
           }
 
-          if (data.status === "ready" || data.reachable) {
+          if (data.status === "waiting") {
+            setMessage("Starting deployment…");
+          } else if (data.status === "building") {
+            setMessage("Building preview…");
+          }
+
+          if (data.status === "ready") {
             window.location.replace(url);
             return;
           }

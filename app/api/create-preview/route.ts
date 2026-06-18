@@ -296,7 +296,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       previewUrl,
-      finalPreviewUrl,
       deploymentId: deployment.id,
       previewId,
       designSystem,

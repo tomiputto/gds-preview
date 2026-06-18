@@ -32,12 +32,3 @@ export async function fetchDeployment(
   }
   return res.json();
 }
-
-export async function isPreviewUrlReachable(previewUrl: string) {
-  try {
-    const res = await fetch(previewUrl, { method: "GET", redirect: "follow" });
-    return res.status !== 404;
-  } catch {
-    return false;
-  }
-}
