@@ -7,95 +7,6 @@ import {
   resolveDesignSystem,
 } from "./design-systems";
 
-// Hobby caps at 10s; Pro allows up to 60s+ for alias polling before returning URL.
-export const maxDuration = 60;
-
-type VercelDeployment = {
-  id: string;
-  url: string;
-  alias?: string[];
-  aliasAssigned?: boolean;
-  readyState?: string;
-};
-
-const PREVIEW_ALIAS_POLL_MS = 1500;
-// Stay under Vercel Hobby's 10s function limit with room for deploy API + response.
-const PREVIEW_ALIAS_MAX_WAIT_MS = 8500;
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function deploymentApiUrl(deploymentId: string, teamId?: string) {
-  return teamId
-    ? `https://api.vercel.com/v13/deployments/${deploymentId}?teamId=${teamId}`
-    : `https://api.vercel.com/v13/deployments/${deploymentId}`;
-}
-
-async function fetchDeployment(
-  deploymentId: string,
-  token: string,
-  teamId?: string
-): Promise<VercelDeployment> {
-  const res = await fetch(deploymentApiUrl(deploymentId, token), {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch deployment ${deploymentId}: ${res.status}`);
-  }
-  return res.json();
-}
-
-function isProjectAliasReady(deployment: VercelDeployment, projectDomain: string) {
-  return (
-    deployment.aliasAssigned === true &&
-    Array.isArray(deployment.alias) &&
-    deployment.alias.includes(projectDomain)
-  );
-}
-
-async function isPreviewUrlReachable(previewUrl: string) {
-  try {
-    const res = await fetch(previewUrl, { method: "GET", redirect: "follow" });
-    return res.status !== 404;
-  } catch {
-    return false;
-  }
-}
-
-async function waitForPreviewUrl(
-  deploymentId: string,
-  projectDomain: string,
-  previewUrl: string,
-  token: string,
-  teamId?: string
-): Promise<{ deployment: VercelDeployment; status: "building" | "ready" }> {
-  const deadline = Date.now() + PREVIEW_ALIAS_MAX_WAIT_MS;
-  let deployment = await fetchDeployment(deploymentId, token, teamId);
-
-  while (Date.now() < deadline) {
-    if (deployment.readyState === "ERROR" || deployment.readyState === "CANCELED") {
-      throw new Error(`Deployment ${deployment.readyState?.toLowerCase()}`);
-    }
-
-    const aliasReady = isProjectAliasReady(deployment, projectDomain);
-    if (aliasReady && (await isPreviewUrlReachable(previewUrl))) {
-      return {
-        deployment,
-        status: deployment.readyState === "READY" ? "ready" : "building",
-      };
-    }
-
-    await sleep(PREVIEW_ALIAS_POLL_MS);
-    deployment = await fetchDeployment(deploymentId, token, teamId);
-  }
-
-  return {
-    deployment,
-    status: deployment.readyState === "READY" ? "ready" : "building",
-  };
-}
-
 // Read env at request time, not module load time
 function getEnv() {
   return {
@@ -250,6 +161,13 @@ export default defineConfig({
   return files;
 }
 
+function getPublicBaseUrl(request: NextRequest) {
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  return request.nextUrl.origin;
+}
+
 export async function POST(request: NextRequest) {
   const env = getEnv();
 
@@ -372,22 +290,17 @@ export async function POST(request: NextRequest) {
     const deployment = await vercelRes.json();
 
     const projectDomain = `${deploymentName}.vercel.app`;
-    const previewUrl = `https://${projectDomain}`;
-
-    const { status } = await waitForPreviewUrl(
-      deployment.id,
-      projectDomain,
-      previewUrl,
-      env.VERCEL_TOKEN,
-      env.VERCEL_TEAM_ID
-    );
+    const finalPreviewUrl = `https://${projectDomain}`;
+    const baseUrl = getPublicBaseUrl(request);
+    const previewUrl = `${baseUrl}/wait?deploymentId=${encodeURIComponent(deployment.id)}&url=${encodeURIComponent(finalPreviewUrl)}`;
 
     return NextResponse.json({
       previewUrl,
+      finalPreviewUrl,
       deploymentId: deployment.id,
       previewId,
       designSystem,
-      status,
+      status: "building",
     });
   } catch (error) {
     console.error("Deployment request failed:", error);

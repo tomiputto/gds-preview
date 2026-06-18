@@ -60,7 +60,11 @@
                   "properties": {
                     "previewUrl": {
                       "type": "string",
-                      "description": "The unique public URL where the preview is deployed"
+                      "description": "URL to share with the user. Opens a building page and redirects to the live preview when ready."
+                    },
+                    "finalPreviewUrl": {
+                      "type": "string",
+                      "description": "The final Vercel preview domain (redirect target after build)"
                     },
                     "deploymentId": {
                       "type": "string",
