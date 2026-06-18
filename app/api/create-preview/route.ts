@@ -256,7 +256,12 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         name: deploymentName,
         files: vercelFiles,
-        target: "preview",
+        // Each preview is its own Vercel project with a single deployment.
+        // Production target assigns the project .vercel.app domain to this
+        // deployment. Preview target leaves that domain unbound (404) while
+        // deployment.url stays behind Standard Protection on Hobby.
+        target: "production",
+        alias: [`${deploymentName}.vercel.app`],
         projectSettings: {
           framework: "vite",
           buildCommand: "npm run build",
@@ -277,10 +282,11 @@ export async function POST(request: NextRequest) {
 
     const deployment = await vercelRes.json();
 
-    // Use the project domain (e.g. gds-vero-preview-abc123.vercel.app), not
-    // deployment.url (unique deployment URL). On Hobby, Standard Protection
-    // blocks deployment URLs but leaves the project .vercel.app domain public.
-    const previewUrl = `https://${deploymentName}.vercel.app`;
+    const projectDomain = `${deploymentName}.vercel.app`;
+    const assignedAlias = Array.isArray(deployment.alias)
+      ? deployment.alias.find((alias: string) => alias === projectDomain)
+      : undefined;
+    const previewUrl = `https://${assignedAlias ?? projectDomain}`;
 
     return NextResponse.json({
       previewUrl,
