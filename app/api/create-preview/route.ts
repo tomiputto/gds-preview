@@ -288,15 +288,26 @@ export async function POST(request: NextRequest) {
     }
 
     const deployment = await vercelRes.json();
+    const deploymentId = deployment.id ?? deployment.uid;
+    if (!deploymentId) {
+      console.error("Vercel deployment missing id:", deployment);
+      return NextResponse.json(
+        { error: "Deployment created but response had no deployment id" },
+        { status: 502 }
+      );
+    }
 
     const projectDomain = `${deploymentName}.vercel.app`;
-    const finalPreviewUrl = `https://${projectDomain}`;
+    const previewUrl = `https://${projectDomain}`;
     const baseUrl = getPublicBaseUrl(request);
-    const previewUrl = `${baseUrl}/wait?deploymentId=${encodeURIComponent(deployment.id)}&url=${encodeURIComponent(finalPreviewUrl)}&project=${encodeURIComponent(deploymentName)}`;
+    const waitUrl = `${baseUrl}/wait?deploymentId=${encodeURIComponent(deploymentId)}&url=${encodeURIComponent(previewUrl)}&project=${encodeURIComponent(deploymentName)}`;
 
     return NextResponse.json({
+      // ChatGPT maps previewUrl to its preview panel — must be the Vercel site URL.
       previewUrl,
-      deploymentId: deployment.id,
+      // Share this with the user: shows building state and redirects when READY.
+      waitUrl,
+      deploymentId,
       previewId,
       designSystem,
       status: "building",

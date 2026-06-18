@@ -57,10 +57,15 @@
               "application/json": {
                 "schema": {
                   "type": "object",
+                  "required": ["previewUrl", "waitUrl", "status"],
                   "properties": {
                     "previewUrl": {
                       "type": "string",
-                      "description": "URL to share with the user. Opens a building page and redirects to the live preview when the Vercel build is READY."
+                      "description": "Final Vercel preview site URL (https://gds-vero-preview-xxxx.vercel.app). Used by ChatGPT preview panel."
+                    },
+                    "waitUrl": {
+                      "type": "string",
+                      "description": "URL to share with the user. Shows a building page and redirects to previewUrl when the Vercel build is READY."
                     },
                     "deploymentId": {
                       "type": "string",
@@ -95,5 +100,15 @@
         }
       }
     }
-  }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API_SECRET from Vercel environment variables"
+      }
+    }
+  },
+  "security": [{ "BearerAuth": [] }]
 }
