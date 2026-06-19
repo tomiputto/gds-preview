@@ -3,7 +3,7 @@
   "info": {
     "title": "GDS Preview API",
     "description": "Creates live preview deployments of React apps built with GDS design systems (Gofore GDS or GDS-VERO). Send React component code, a designSystem id, and receive a unique public preview URL.",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "servers": [
     {
@@ -16,7 +16,7 @@
       "post": {
         "operationId": "createPreview",
         "summary": "Create a GDS preview deployment",
-        "description": "Receives React/TSX code for App.tsx (and optional extra component files), wraps it in a Vite + GDS template for the selected design system, and deploys it to Vercel. Returns a unique preview URL. Each deployment is isolated — previews do not overwrite each other.",
+        "description": "Receives React/TSX code for App.tsx (and optional extra component files), wraps it in a Vite + GDS template for the selected design system, and deploys it to Vercel. Always returns HTTP 200 except for auth failures (401). Check the ok field in the response body.",
         "requestBody": {
           "required": true,
           "content": {
@@ -29,7 +29,7 @@
         },
         "responses": {
           "200": {
-            "description": "Deployment created successfully",
+            "description": "Action result. When ok is true, deployment started. When ok is false, read error.",
             "content": {
               "application/json": {
                 "schema": {
@@ -38,14 +38,8 @@
               }
             }
           },
-          "400": {
-            "description": "Invalid request (missing appCode, wrong designSystem, cross-stack imports, blocked code patterns)"
-          },
           "401": {
             "description": "Unauthorized (missing or invalid API secret)"
-          },
-          "502": {
-            "description": "Vercel deployment failed"
           }
         }
       }
@@ -81,19 +75,27 @@
       },
       "CreatePreviewResponse": {
         "type": "object",
-        "required": ["previewUrl", "waitUrl", "siteUrl", "status"],
+        "required": ["ok", "status"],
         "properties": {
+          "ok": {
+            "type": "boolean",
+            "description": "true when deployment started, false when validation or Vercel deploy failed"
+          },
+          "error": {
+            "type": "string",
+            "description": "Present when ok is false — explain this to the user"
+          },
           "previewUrl": {
             "type": "string",
-            "description": "Primary link to share with the user. Opens a building page and redirects to siteUrl when the Vercel build is READY. Never share siteUrl before the build finishes."
+            "description": "Primary link to share when ok is true. Opens a building page and redirects to siteUrl when ready."
           },
           "waitUrl": {
             "type": "string",
-            "description": "Same as previewUrl. Building page that auto-redirects when ready."
+            "description": "Same as previewUrl when ok is true"
           },
           "siteUrl": {
             "type": "string",
-            "description": "Direct Vercel preview URL (https://gds-vero-preview-xxxx.vercel.app). Only works after build is READY — do not share with the user until then."
+            "description": "Direct Vercel preview URL. Only works after build is READY."
           },
           "deploymentId": {
             "type": "string",
@@ -109,7 +111,7 @@
           },
           "status": {
             "type": "string",
-            "description": "Deployment status (initially 'building')"
+            "description": "building when ok is true, error when ok is false"
           }
         }
       }

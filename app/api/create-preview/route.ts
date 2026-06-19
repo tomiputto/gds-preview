@@ -168,28 +168,33 @@ function getPublicBaseUrl(request: NextRequest) {
   return request.nextUrl.origin;
 }
 
+function actionError(error: string, details?: unknown) {
+  return NextResponse.json({
+    ok: false,
+    error,
+    details,
+    status: "error",
+  });
+}
+
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   const env = getEnv();
 
   const authHeader = request.headers.get("authorization");
   if (!env.API_SECRET) {
-    return NextResponse.json(
-      { error: "Server misconfigured: API_SECRET is not set in Vercel environment variables" },
-      { status: 503 }
-    );
+    return actionError("Server misconfigured: API_SECRET is not set in Vercel environment variables");
   }
   if (!authHeader || authHeader !== `Bearer ${env.API_SECRET}`) {
     return NextResponse.json(
-      { error: "Unauthorized: check Custom GPT Action uses Bearer auth with the same API_SECRET as Vercel" },
+      { ok: false, error: "Unauthorized: check Custom GPT Action Bearer auth matches Vercel API_SECRET" },
       { status: 401 }
     );
   }
 
   if (!env.VERCEL_TOKEN) {
-    return NextResponse.json(
-      { error: "Server misconfigured: VERCEL_TOKEN is not set in Vercel environment variables" },
-      { status: 503 }
-    );
+    return actionError("Server misconfigured: VERCEL_TOKEN is not set in Vercel environment variables");
   }
 
   let body: {
@@ -202,41 +207,30 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return actionError("Invalid JSON body");
   }
 
   const { appCode, extraFiles, title, designSystem: designSystemRaw } = body;
   const designSystem = resolveDesignSystem(designSystemRaw);
 
   if (!designSystem) {
-    return NextResponse.json(
-      {
-        error: 'Invalid designSystem. Use "gds" (Gofore GDS) or "gds-vero" (Verohallinto / vero.fi).',
-      },
-      { status: 400 }
-    );
+    return actionError('Invalid designSystem. Use "gds" or "gds-vero".');
   }
 
   if (!appCode || typeof appCode !== "string") {
-    return NextResponse.json(
-      { error: "appCode is required and must be a string" },
-      { status: 400 }
-    );
+    return actionError("appCode is required and must be a string");
   }
 
   const appCodeError = validateCode(appCode);
   if (appCodeError) {
-    return NextResponse.json({ error: `Blocked: ${appCodeError}` }, { status: 400 });
+    return actionError(`Blocked: ${appCodeError}`);
   }
 
   if (extraFiles) {
     for (const [filePath, content] of Object.entries(extraFiles)) {
       const extraError = validateCode(content);
       if (extraError) {
-        return NextResponse.json(
-          { error: `Blocked in ${filePath}: ${extraError}` },
-          { status: 400 }
-        );
+        return actionError(`Blocked in ${filePath}: ${extraError}`);
       }
     }
   }
@@ -250,7 +244,7 @@ export async function POST(request: NextRequest) {
   ];
   const importError = validateDesignSystemImports(designSystem, importChunks);
   if (importError) {
-    return NextResponse.json({ error: importError }, { status: 400 });
+    return actionError(importError);
   }
 
   const files = buildTemplateFiles(designSystem, appCode, extraFiles, title);
@@ -284,7 +278,6 @@ export async function POST(request: NextRequest) {
         // deployment. Preview target leaves that domain unbound (404) while
         // deployment.url stays behind Standard Protection on Hobby.
         target: "production",
-        alias: [`${deploymentName}.vercel.app`],
         projectSettings: {
           framework: "vite",
           buildCommand: "npm run build",
@@ -297,20 +290,14 @@ export async function POST(request: NextRequest) {
     if (!vercelRes.ok) {
       const errorData = await vercelRes.json();
       console.error("Vercel API error:", errorData);
-      return NextResponse.json(
-        { error: "Deployment failed", details: errorData },
-        { status: 502 }
-      );
+      return actionError("Vercel deployment failed", errorData);
     }
 
     const deployment = await vercelRes.json();
     const deploymentId = deployment.id ?? deployment.uid;
     if (!deploymentId) {
       console.error("Vercel deployment missing id:", deployment);
-      return NextResponse.json(
-        { error: "Deployment created but response had no deployment id" },
-        { status: 502 }
-      );
+      return actionError("Deployment created but Vercel returned no deployment id");
     }
 
     const projectDomain = `${deploymentName}.vercel.app`;
@@ -319,7 +306,7 @@ export async function POST(request: NextRequest) {
     const waitUrl = `${baseUrl}/wait?deploymentId=${encodeURIComponent(deploymentId)}&url=${encodeURIComponent(siteUrl)}&project=${encodeURIComponent(deploymentName)}`;
 
     return NextResponse.json({
-      // Primary link for users and ChatGPT — never 404, shows building then redirects.
+      ok: true,
       previewUrl: waitUrl,
       siteUrl,
       waitUrl,
@@ -330,6 +317,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Deployment request failed:", error);
-    return NextResponse.json({ error: "Failed to create deployment" }, { status: 500 });
+    return actionError("Failed to create deployment");
   }
 }

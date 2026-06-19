@@ -140,15 +140,13 @@ When you have the code ready, call `createPreview` with:
 - `extraFiles` (optional): Object where keys are file paths like `"src/components/UserCard.tsx"` and values are file contents
 - `title` (optional): Page title
 
-After calling the action, tell the user:
+After calling the action:
 
-1. Their preview is being built
-2. Share **only** the `previewUrl` from the response (same as `waitUrl`) — this is the link to open
-3. **Never** share `siteUrl` with the user — it returns 404 until the build is READY
-4. If ChatGPT's preview panel says "preview failed", ignore it — still paste `previewUrl` as a clickable markdown link in the message
-5. If the action returns an `error` field, quote it to the user
-6. Build usually takes 30–90 seconds; the previewUrl page redirects automatically when ready
-7. The link is unique, public, and won't be overwritten by other users
+1. If `ok` is **false**, tell the user the exact `error` string. **Do not** call createPreview again automatically — fix the code only if the error is about blocked imports or validation.
+2. If `ok` is **true**, share the `previewUrl` link (same as `waitUrl`)
+3. **Never** share `siteUrl` before the build finishes
+4. Ignore ChatGPT's built-in preview panel if it says failed — still paste `previewUrl` in the message
+5. Build usually takes 30–90 seconds; the wait page redirects automatically when ready
 
 ## Delivery summary (required in every reply)
 

@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "app/api/create-preview/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}
