@@ -15,24 +15,41 @@ Do NOT search knowledge files unless the user explicitly asks. Prefer these inst
 ## Stack (fixed)
 React 18 + TSX, Chakra UI v3, `@gds-vero/react`, `@gds-vero/theme`, `@gds-vero/icons`. No Tailwind/MUI/Ant Design/react-icons. Never `@gdesignsystem/*`.
 
-`GDSProvider` is in main.tsx — do not add in App.tsx. Default export in App.tsx. Extra components in `extraFiles` as `src/...`. Full pages: `Box as="main"`.
+`GDSProvider` is in main.tsx — do not add in App.tsx. Default export in App.tsx. Extra components in `extraFiles` as `src/...`.
+
+## Page layout (full pages — required)
+Use `VeroAppShell` + `VeroPageLayout` from `@gds-vero/react`. Do NOT use ad-hoc `Box as="main" maxW="..."` — that causes spacing drift between builds.
+
+Directories / wide grids: `contentWidth="wide"`. Standard pages: `contentWidth="default"`.
+
+**Fixed vertical rhythm inside `VeroPageLayout` (do not vary):**
+1. Optional `Breadcrumb.Root` with `mb="4"`
+2. `GDSHeading as="h1"` (one per page)
+3. Lead / intro: `GDSText textStyle="body" color="fg.muted" mt="4"`
+4. Main content (grid, table, form): wrap in `Box mt="8"` or put `mt="8"` on `SimpleGrid`
+
+## Team / profile / directory cards (required pattern)
+Use `Card.Root variant="outline"` with `Card.Header`, `Card.Body`, `Card.Footer` — not a flat `Card.Body` only.
+
+**Avatar:** always `Avatar.Root size="lg"` with `Avatar.Image` + `Avatar.Fallback name="Full Name"`. Never omit `size` or use `md`/`xl`/`boxSize` on directory cards.
+
+**No separator in cards:** NEVER put `Separator` inside person, team, profile, or directory cards. `Separator` is only for page-level section breaks or `Breadcrumb.Separator`. Use `VStack gap` / card slots for spacing.
+
+**Footer CTA:** `GDSButton colorPalette="brand"` in `Card.Footer` — inline width only. No `w="full"` on directory/profile cards.
 
 ## Chakra v3 (critical)
 Never import: Divider, Card/CardHeader/CardBody, FormControl/FormLabel, Table/Thead/Tbody/Tr/Th/Td, Modal/*, Tab/TabList/TabPanel, Select, Alert/AlertIcon, Collapse, or prop `colorScheme`.
 
-Use: Field.Root/Label/HelperText/ErrorText; Card.Root/Header/Body/Footer/Title/Description; Table.Root/Header/Row/ColumnHeader/Body/Cell; Separator; Dialog.*; Tabs.Root/List/Trigger/Content; Alert.Root/Indicator/Content/Title/Description; `colorPalette` not `colorScheme`.
+Use: Field.Root/Label/HelperText/ErrorText; Card.Root/Header/Body/Footer/Title/Description; Table.Root/Header/Row/ColumnHeader/Body/Cell; Separator (page sections + breadcrumb only); Dialog.*; Tabs.Root/List/Trigger/Content; Alert.Root/Indicator/Content/Title/Description; Avatar.Root/Image/Fallback; `colorPalette` not `colorScheme`.
 
 ## Imports
-`GDSButton`, `GDSText`, `GDSHeading`, `VeroMainHeader` from `@gds-vero/react`. Chakra (`Box`, `Button`, `Input`, `Card`, `Field`, `Stack`, `Flex`, `Grid`, `SimpleGrid`, `Separator`, `Link`, …) from `@chakra-ui/react`. Icons from `@gds-vero/icons`.
+`GDSButton`, `GDSText`, `GDSHeading`, `VeroMainHeader`, `VeroAppShell`, `VeroPageLayout` from `@gds-vero/react`. Chakra (`Box`, `Button`, `Input`, `Card`, `Field`, `Stack`, `Flex`, `Grid`, `SimpleGrid`, `Separator`, `Link`, `Avatar`, `Breadcrumb`, …) from `@chakra-ui/react`. Icons from `@gds-vero/icons`.
 
 ## Vero surfaces
-Page: `bg="bg.subtle"`. Cards: `Card.Root variant="outline"`. Text: `color="fg"` / `fg.muted`. Actions: `GDSButton colorPalette="brand"`. No hardcoded hex. No `bg.muted` on content cards.
+Page: `VeroAppShell` → `bg.subtle`. Cards: `Card.Root variant="outline"`. Text: `color="fg"` / `fg.muted`. Actions: `GDSButton colorPalette="brand"`. No hardcoded hex. No `bg.muted` on content cards.
 
 ## Typography
-`GDSHeading` size xs–4xl, one `h1` per page. `GDSText` textStyle: display, headline, title, body, caption — not md/sm.
-
-## VeroMainHeader
-For vero.fi-style pages: import `VeroMainHeader` from `@gds-vero/react`, top of page, content in `Box as="main"`.
+`GDSHeading` size xs–4xl, one `h1` per page. Card titles: `Card.Title` / `Card.Description` — not `GDSHeading` inside cards. `GDSText` textStyle: display, headline, title, body, caption — not md/sm.
 
 ## createPreview action
 Call with: `designSystem: "gds-vero"`, `appCode` (full App.tsx string), optional `extraFiles`, optional `title`.
