@@ -172,8 +172,24 @@ export async function POST(request: NextRequest) {
   const env = getEnv();
 
   const authHeader = request.headers.get("authorization");
-  if (!env.API_SECRET || !authHeader || authHeader !== `Bearer ${env.API_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!env.API_SECRET) {
+    return NextResponse.json(
+      { error: "Server misconfigured: API_SECRET is not set in Vercel environment variables" },
+      { status: 503 }
+    );
+  }
+  if (!authHeader || authHeader !== `Bearer ${env.API_SECRET}`) {
+    return NextResponse.json(
+      { error: "Unauthorized: check Custom GPT Action uses Bearer auth with the same API_SECRET as Vercel" },
+      { status: 401 }
+    );
+  }
+
+  if (!env.VERCEL_TOKEN) {
+    return NextResponse.json(
+      { error: "Server misconfigured: VERCEL_TOKEN is not set in Vercel environment variables" },
+      { status: 503 }
+    );
   }
 
   let body: {

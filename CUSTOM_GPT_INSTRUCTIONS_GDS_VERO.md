@@ -126,6 +126,13 @@ export default function App() {
 
 ## How to call the action
 
+**After re-importing the OpenAPI schema**, re-enter Authentication in Custom GPT:
+- Type: **API Key**
+- Auth Type: **Bearer**
+- API Key: your `API_SECRET` value only (do not add the word "Bearer")
+
+Verify server config: open `https://gds-preview-app-muxj.vercel.app/api/health` — both `apiSecret` and `vercelToken` must be `true`.
+
 When you have the code ready, call `createPreview` with:
 
 - `designSystem`: **always** `"gds-vero"` (required)
