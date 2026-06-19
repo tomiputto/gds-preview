@@ -81,15 +81,19 @@
       },
       "CreatePreviewResponse": {
         "type": "object",
-        "required": ["previewUrl", "waitUrl", "status"],
+        "required": ["previewUrl", "waitUrl", "siteUrl", "status"],
         "properties": {
           "previewUrl": {
             "type": "string",
-            "description": "Final Vercel preview site URL (https://gds-vero-preview-xxxx.vercel.app). Used by ChatGPT preview panel."
+            "description": "Primary link to share with the user. Opens a building page and redirects to siteUrl when the Vercel build is READY. Never share siteUrl before the build finishes."
           },
           "waitUrl": {
             "type": "string",
-            "description": "URL to share with the user. Shows a building page and redirects to previewUrl when the Vercel build is READY."
+            "description": "Same as previewUrl. Building page that auto-redirects when ready."
+          },
+          "siteUrl": {
+            "type": "string",
+            "description": "Direct Vercel preview URL (https://gds-vero-preview-xxxx.vercel.app). Only works after build is READY — do not share with the user until then."
           },
           "deploymentId": {
             "type": "string",

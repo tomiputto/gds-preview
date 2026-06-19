@@ -298,14 +298,14 @@ export async function POST(request: NextRequest) {
     }
 
     const projectDomain = `${deploymentName}.vercel.app`;
-    const previewUrl = `https://${projectDomain}`;
+    const siteUrl = `https://${projectDomain}`;
     const baseUrl = getPublicBaseUrl(request);
-    const waitUrl = `${baseUrl}/wait?deploymentId=${encodeURIComponent(deploymentId)}&url=${encodeURIComponent(previewUrl)}&project=${encodeURIComponent(deploymentName)}`;
+    const waitUrl = `${baseUrl}/wait?deploymentId=${encodeURIComponent(deploymentId)}&url=${encodeURIComponent(siteUrl)}&project=${encodeURIComponent(deploymentName)}`;
 
     return NextResponse.json({
-      // ChatGPT maps previewUrl to its preview panel — must be the Vercel site URL.
-      previewUrl,
-      // Share this with the user: shows building state and redirects when READY.
+      // Primary link for users and ChatGPT — never 404, shows building then redirects.
+      previewUrl: waitUrl,
+      siteUrl,
       waitUrl,
       deploymentId,
       previewId,

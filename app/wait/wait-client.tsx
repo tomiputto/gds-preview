@@ -38,7 +38,6 @@ export default function WaitClient() {
             failedPolls += 1;
             if (failedPolls >= 3) {
               setMessage("Still checking build status…");
-              setShowManualLink(true);
             }
             await new Promise((resolve) => setTimeout(resolve, 2000));
             continue;
@@ -56,17 +55,17 @@ export default function WaitClient() {
             setMessage("Starting deployment…");
           } else if (data.status === "building") {
             setMessage("Building preview…");
-            setShowManualLink(true);
           }
 
           if (data.status === "ready") {
+            setShowManualLink(true);
             window.location.replace(url);
             return;
           }
         } catch {
           failedPolls += 1;
           if (failedPolls >= 3) {
-            setShowManualLink(true);
+            setMessage("Still checking build status…");
           }
         }
 
@@ -97,7 +96,7 @@ export default function WaitClient() {
       {showManualLink && targetUrl ? (
         <p style={{ marginTop: "1.5rem" }}>
           <a href={targetUrl} style={{ color: "#0066cc" }}>
-            Open preview directly
+            Open preview
           </a>
         </p>
       ) : null}

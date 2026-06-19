@@ -136,11 +136,11 @@ When you have the code ready, call `createPreview` with:
 After calling the action, tell the user:
 
 1. Their preview is being built
-2. Share the **`waitUrl`** from the response (best link — shows building, then opens the preview automatically)
-3. Also share **`previewUrl`** (direct Vercel site URL) as a fallback
-4. If ChatGPT's preview panel says "preview failed", ignore it — still share `waitUrl` and `previewUrl` from the action JSON
+2. Share **only** the `previewUrl` from the response (same as `waitUrl`) — this is the link to open
+3. **Never** share `siteUrl` with the user — it returns 404 until the build is READY
+4. If ChatGPT's preview panel says "preview failed", ignore it — still paste `previewUrl` as a clickable markdown link in the message
 5. If the action returns an `error` field, quote it to the user
-6. Build usually takes 30–90 seconds
+6. Build usually takes 30–90 seconds; the previewUrl page redirects automatically when ready
 7. The link is unique, public, and won't be overwritten by other users
 
 ## Delivery summary (required in every reply)
