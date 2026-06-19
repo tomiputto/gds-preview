@@ -1,5 +1,5 @@
 {
-  "openapi": "3.1.0",
+  "openapi": "3.0.3",
   "info": {
     "title": "GDS Preview API",
     "description": "Creates live preview deployments of React apps built with GDS design systems (Gofore GDS or GDS-VERO). Send React component code, a designSystem id, and receive a unique public preview URL.",
@@ -22,30 +22,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": ["appCode", "designSystem"],
-                "properties": {
-                  "designSystem": {
-                    "type": "string",
-                    "enum": ["gds", "gds-vero"],
-                    "description": "Which design system stack to use. Use \"gds\" for Gofore GDS (@gdesignsystem/*). Use \"gds-vero\" for Verohallinto / vero.fi GDS-VERO (@gds-vero/*). Required so multiple Custom GPTs can share this API safely."
-                  },
-                  "appCode": {
-                    "type": "string",
-                    "description": "The full contents of src/App.tsx. Must export a default React component. GDSProvider is already wrapped in main.tsx — do not add it in App.tsx."
-                  },
-                  "extraFiles": {
-                    "type": "object",
-                    "description": "Optional additional source files. Keys must start with 'src/' (e.g. 'src/components/Header.tsx'). Values are the full file contents as strings.",
-                    "additionalProperties": {
-                      "type": "string"
-                    }
-                  },
-                  "title": {
-                    "type": "string",
-                    "description": "Optional page title for the HTML document. Defaults to 'GDS Preview'."
-                  }
-                }
+                "$ref": "#/components/schemas/CreatePreviewRequest"
               }
             }
           }
@@ -56,34 +33,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": ["previewUrl", "waitUrl", "status"],
-                  "properties": {
-                    "previewUrl": {
-                      "type": "string",
-                      "description": "Final Vercel preview site URL (https://gds-vero-preview-xxxx.vercel.app). Used by ChatGPT preview panel."
-                    },
-                    "waitUrl": {
-                      "type": "string",
-                      "description": "URL to share with the user. Shows a building page and redirects to previewUrl when the Vercel build is READY."
-                    },
-                    "deploymentId": {
-                      "type": "string",
-                      "description": "Vercel deployment ID"
-                    },
-                    "previewId": {
-                      "type": "string",
-                      "description": "Short unique ID for this preview"
-                    },
-                    "designSystem": {
-                      "type": "string",
-                      "description": "The design system used for this deployment"
-                    },
-                    "status": {
-                      "type": "string",
-                      "description": "Deployment status (initially 'building')"
-                    }
-                  }
+                  "$ref": "#/components/schemas/CreatePreviewResponse"
                 }
               }
             }
@@ -102,6 +52,64 @@
     }
   },
   "components": {
+    "schemas": {
+      "CreatePreviewRequest": {
+        "type": "object",
+        "required": ["appCode", "designSystem"],
+        "properties": {
+          "designSystem": {
+            "type": "string",
+            "enum": ["gds", "gds-vero"],
+            "description": "Which design system stack to use. Use \"gds\" for Gofore GDS (@gdesignsystem/*). Use \"gds-vero\" for Verohallinto / vero.fi GDS-VERO (@gds-vero/*). Required so multiple Custom GPTs can share this API safely."
+          },
+          "appCode": {
+            "type": "string",
+            "description": "The full contents of src/App.tsx. Must export a default React component. GDSProvider is already wrapped in main.tsx — do not add it in App.tsx."
+          },
+          "extraFiles": {
+            "type": "object",
+            "description": "Optional additional source files. Keys must start with 'src/' (e.g. 'src/components/Header.tsx'). Values are the full file contents as strings.",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string",
+            "description": "Optional page title for the HTML document. Defaults to 'GDS Preview'."
+          }
+        }
+      },
+      "CreatePreviewResponse": {
+        "type": "object",
+        "required": ["previewUrl", "waitUrl", "status"],
+        "properties": {
+          "previewUrl": {
+            "type": "string",
+            "description": "Final Vercel preview site URL (https://gds-vero-preview-xxxx.vercel.app). Used by ChatGPT preview panel."
+          },
+          "waitUrl": {
+            "type": "string",
+            "description": "URL to share with the user. Shows a building page and redirects to previewUrl when the Vercel build is READY."
+          },
+          "deploymentId": {
+            "type": "string",
+            "description": "Vercel deployment ID"
+          },
+          "previewId": {
+            "type": "string",
+            "description": "Short unique ID for this preview"
+          },
+          "designSystem": {
+            "type": "string",
+            "description": "The design system used for this deployment"
+          },
+          "status": {
+            "type": "string",
+            "description": "Deployment status (initially 'building')"
+          }
+        }
+      }
+    },
     "securitySchemes": {
       "BearerAuth": {
         "type": "http",
@@ -110,5 +118,9 @@
       }
     }
   },
-  "security": [{ "BearerAuth": [] }]
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
 }
